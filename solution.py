@@ -23,8 +23,8 @@ def webServer(port=13331):
 
             #Send one HTTP header line into socket
             #Fill in start
-            response = "HTTP/1.1 200 OK\r\nContent-Length:" + str(len(outputdata)) + "\r\n\r\n"
-            connectionSocket.send(response.encode())
+            #response = "HTTP/1.1 200 OK\r\nContent-Length:" + str(len(outputdata)) + "\r\n\r\n"
+            connectionSocket.send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n".encode())
             # print('message: ', message)
             # print('filename: ', filename)
             # print('file size:', len(outputdata))
@@ -43,7 +43,7 @@ def webServer(port=13331):
             # print("file not found")
             # print('message: ', message)
             # print('filename: ', filename)
-            connectionSocket.send("HTTP/1.1 404 Not Found\r\n\r\n".encode())
+            connectionSocket.send("HTTP/1.1 404 NotFound\r\n\r\n".encode())
             #Fill in end
 
             #Close client socket
