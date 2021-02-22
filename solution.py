@@ -14,21 +14,16 @@ def webServer(port=13331):
     while True:
         #Establish the connection
         print('Ready to serve...')
-        connectionSocket, addr =  serverSocket.accept()   #Fill in start      #Fill in end
+        connectionSocket, addr = serverSocket.accept()
         try:
-            message =  connectionSocket.recv(2048).decode()     #Fill in start    #Fill in end
+            message = connectionSocket.recv(2048).decode()
             filename = message.split()[1]
             f = open(filename[1:])
-            outputdata =  f.read() #Fill in start     #Fill in end
+            outputdata =  f.read()
 
             #Send one HTTP header line into socket
             #Fill in start
-            #response = "HTTP/1.1 200 OK\r\nContent-Length:" + str(len(outputdata)) + "\r\n\r\n"
             connectionSocket.send("HTTP/1.1 200 OK\r\nContent-Type: text/html\r\n\r\n".encode())
-            # print('message: ', message)
-            # print('filename: ', filename)
-            # print('file size:', len(outputdata))
-            # print('file content:', outputdata)
             #Fill in end
 
             #Send the content of the requested file to the client
@@ -40,10 +35,7 @@ def webServer(port=13331):
         except IOError:
             #Send response message for file not found (404)
             #Fill in start
-            # print("file not found")
-            # print('message: ', message)
-            # print('filename: ', filename)
-            connectionSocket.send("HTTP/1.1 404 NotFound\r\n\r\n".encode())
+            connectionSocket.send("HTTP/1.1 404 Not Found\r\n\r\n".encode())
             #Fill in end
 
             #Close client socket
