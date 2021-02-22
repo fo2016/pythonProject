@@ -23,7 +23,7 @@ def webServer(port=13331):
 
             #Send one HTTP header line into socket
             #Fill in start
-            response = "HTTP/1.1 200 Ok\r\nContent-Length:" + str(len(outputdata)) + "\r\n\r\n"
+            response = "HTTP/1.1 200 OK\r\nContent-Length:" + str(len(outputdata)) + "\r\n\r\n"
             connectionSocket.send(response.encode())
             # print('message: ', message)
             # print('filename: ', filename)
