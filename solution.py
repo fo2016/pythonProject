@@ -1,80 +1,300 @@
 from socket import *
+import os
+import sys
+import struct
+import time
+import select
+import binascii
 
 
-def smtp_client(port=1025, mailserver='127.0.0.1'):
-    msg = "\r\n My message"
-    endmsg = "\r\n.\r\n"
-
-    # Choose a mail server (e.g. Google mail server) if you want to verify the script beyond GradeScope
-
-    # Create socket called clientSocket and establish a TCP connection with mailserver and port
-
-    # Fill in start
-    clientSocket = socket(AF_INET, SOCK_STREAM)
-    clientSocket.connect((mailserver, port))
-
-    # Fill in end
-
-    recv = clientSocket.recv(1024).decode()
-    # print(recv)
-
-    if recv[:3] != '220':
-        print('220 reply not received from server.')
-
-    # Send HELO command and print server response.
-    heloCommand = 'HELO Alice\r\n'
-    clientSocket.send(heloCommand.encode())
-    recv1 = clientSocket.recv(1024).decode()
-
-    if recv1[:3] != '250':
-        print('250 reply not received from server.')
-
-    # Send MAIL FROM command and print server response.
-    # Fill in start
-    mailfrom = "MAIL FROM: <fantortiz@gmail.com>\r\n"
-    clientSocket.send(mailfrom.encode())
-    recv2 = clientSocket.recv(1024).decode()
-    # print(recv2)
-    # Fill in end
-
-    # Send RCPT TO command and print server response.
-    # Fill in start
-    mailto = "RCPT TO: <felix.ortiz@faosystems.com>\r\n"
-    clientSocket.send(mailto.encode())
-    recv3 = clientSocket.recv(1024).decode()
-    # print(recv3)
-    # Fill in end
-
-    # Send DATA command and print server response.
-    # Fill in start
-    data = "DATA\r\n"
-    clientSocket.send(data.encode())
-    recv4 = clientSocket.recv(1024).decode()
-    # print(recv4)
-    # Fill in end
-
-    # Send message data.
-    # Fill in start
-    msg = "Hello, this is a reminder that your vacation date is fast approaching.\r\n"
-    clientSocket.send(msg.encode())
-    # Fill in end
-
-    # Message ends with a single period.
-    # Fill in start
-    msg = "\r\n.\r\n"
-    clientSocket.send(msg.encode())
-    recv5 = clientSocket.recv(1024).decode()
-    # print(recv5)
-    # Fill in end
-
-    # Send QUIT command and get server response.
-    # Fill in start
-    msg = "QUIT\r\n"
-    clientSocket.send(msg.encode())
-    recv6 = clientSocket.recv(1024).decode()
-    # print(recv6)
-    # Fill in end
+ICMP_ECHO_REQUEST = 8
+MAX_HOPS = 30
+TIMEOUT = 2.0
+TRIES = 1
+# The packet that we shall send to each router along the path is the ICMP echo
+# request packet, which is exactly what we had used in the ICMP ping exercise.
+# We shall use the same packet that we built in the Ping exercise
 
 
-if __name__ == '__main__':
-    smtp_client(1025, '127.0.0.1')
+def checksum(string):
+# In this function we make the checksum of our packet
+    csum = 0
+    countTo = (len(string) // 2) * 2
+    count = 0
+
+
+    while count < countTo:
+        thisVal = (string[count + 1]) * 256 + (string[count])
+        csum += thisVal
+        csum &= 0xffffffff
+        count += 2
+
+
+    if countTo < len(string):
+        csum += (string[len(string) - 1])
+        csum &= 0xffffffff
+
+
+    csum = (csum >> 16) + (csum & 0xffff)
+    csum = csum + (csum >> 16)
+    answer = ~csum
+    answer = answer & 0xffff
+    answer = answer >> 8 | (answer << 8 & 0xff00)
+    return answer
+
+
+def build_packet():
+    #Fill in start
+    # In the sendOnePing() method of the ICMP Ping exercise ,firstly the header of our
+    # packet to be sent was made, secondly the checksum was appended to the header and
+    # then finally the complete packet was sent to the destination.
+
+
+    # Make the header in a similar way to the ping exercise.
+    # Append checksum to the header.
+    # Header is type (8), code (8), checksum (16), id (16), sequence (16)
+
+    myChecksum = 0
+    # Make a dummy header with a 0 checksum
+    # struct -- Interpret strings as packed binary data
+    myID = os.getpid() & 0xFFFF  # Return the current process i
+    # print("myID => ", myID)
+    header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, myChecksum, myID, 1)
+    data = struct.pack("d", time.time())
+    # Calculate the checksum on the data and the dummy header.
+    myChecksum = checksum(header + data)
+
+    # Get the right checksum, and put in the header
+
+    if sys.platform == 'darwin':
+        # Convert 16-bit integers from host to network  byte order
+        myChecksum = htons(myChecksum) & 0xffff
+    else:
+        myChecksum = htons(myChecksum)
+
+
+    header = struct.pack("bbHHh", ICMP_ECHO_REQUEST, 0, myChecksum, myID, 1)
+    # packet = header + data
+
+    ### fao
+    #print("header ", header)
+    #print("data ", data)
+    #print("myID", myID)
+    #print("myCheckSum ", myChecksum)
+    #print("packet ", packet)
+
+    # mySocket.sendto(packet, (destAddr, 1))  # AF_INET address must be tuple, not str
+
+    # Both LISTS and TUPLES consist of a number of objects
+    # which can be referenced by their position number within the object.
+
+    #Fill in end
+
+
+    # So the function ending should look like this
+
+
+    packet = header + data
+    return packet
+
+
+def get_route(hostname):
+    timeLeft = TIMEOUT
+    tracelist1 = [] #This is your list to use when iterating through each trace
+    tracelist2 = [] #This is your list to contain all traces
+    icmp = getprotobyname("icmp")
+
+    for ttl in range(1, MAX_HOPS):
+        #print("ttl = " + str(ttl))
+        if not (tracelist1 == []):
+            #print("tracelist 1 is not empty", tracelist1)
+            tracelist2.append(tracelist1)
+            tracelist1 = []
+            traceroutername = ""
+            tracerouteraddr = ""
+            traceroutealias = ""
+            #print("tracelist2 ", tracelist2)
+        for tries in range(TRIES):
+            #print("tries " + str(tries))
+            destAddr = gethostbyname(hostname)
+
+
+            #Fill in start
+            # Make a raw socket named mySocket
+            mySocket = socket(AF_INET, SOCK_RAW, icmp)
+            #Fill in end
+
+
+            mySocket.setsockopt(IPPROTO_IP, IP_TTL, struct.pack('I', ttl))
+            mySocket.settimeout(TIMEOUT)
+            #print("mySocket =>", mySocket)
+
+            try:
+                #mySocket.settimeout(TIMEOUT)
+                d = build_packet()
+                #print("build packet ", d)
+                mySocket.sendto(d, (hostname, 0))
+                t = time.time()
+                startedSelect = time.time()
+
+                whatReady = select.select([mySocket], [], [], timeLeft)
+
+                #readlist, writelist, exceptionlist = select.select([mySocket], [], [], timeLeft)
+
+                #print("readlist ", readlist)
+                #print("writelist ", writelist)
+                #print("exceptionlist ", exceptionlist)
+                #print("timex ", timex)
+
+                #print("whatReady ==> ", whatReady)
+                howLongInSelect = (time.time() - startedSelect)
+                #print("howlonginselect ", howLongInSelect)
+                if whatReady[0] == []: # Timeout
+                    #print("time out whatready[0] ", whatReady[0])
+                    tracelist1.append(str(ttl))
+                    tracelist1.append("* * * Request timed out.")
+                    #Fill in start
+                    #You should add the list above to your all traces list
+                    # tracelist.append(tracelist1)
+                    #Fill in end
+
+                recvPacket, addr = mySocket.recvfrom(1024)
+
+                #print("recvPacket ",recvPacket)
+                #print("recvPacket.__sizeof__()", recvPacket.__sizeof__())
+                #print("addr => ", addr)
+                #sourceAddr = addr[0]
+                #print(sourceAddr)
+                #print(gethostbyaddr(str(sourceAddr)))
+
+                #print("** unpacking **")
+                #print("icmp type ", types)
+                #print("icmp code ", icmp_code)
+                #print("icmp check sum ", icmp_checksum)
+                #print("icmp id ", icmp_id)
+                #print("icmp data", icmp_data, icmp_data.__sizeof__())
+                #print("how long in select ", howLongInSelect)
+
+                timeReceived = time.time()
+                timeLeft = timeLeft - howLongInSelect
+                #print(str(ttl) + "timeleft ", str(timeLeft))
+                if timeLeft <= 0:
+                    #print("timeLeft <=0 ", timeLeft)
+                    tracelist1.append(str(ttl))
+                    tracelist1.append("* * * Request timed out.")
+                    #Fill in start
+                    #You should add the list above to your all traces list
+                    #                    #
+                    # tracelist2.append(tracelist1)
+                    #Fill in end
+            except timeout:
+                #print("except timeout => continue")
+                continue
+
+
+            else:
+                #Fill in start
+                #Fetch the icmp type from the IP packet
+                types, icmp_code, icmp_checksum, icmp_id, icmp_seq_num, icmp_data = struct.unpack_from("bbHHhd",
+                                                                                                       recvPacket,
+                                                                                                       20)
+                #Fill in end
+                try: #try to fetch the hostname
+                    #Fill in start
+                    #print("try get hostname")
+                    #print("address 0 ", addr[0])
+                    #print("host name by address ", gethostbyaddr(str(addr[0])))
+                    traceroutername, traceroutealias, tracerouteraddr = gethostbyaddr(str(addr[0]))
+                    #print("traceroutername ", traceroutername)
+                    #print("traceroutealias ", traceroutealias)
+                    #print("tracerouteraddr ", tracerouteraddr)
+                    #tracelist1.append(gethostbyaddr(str(addr[0])))
+                    #Fill in end
+                except herror:   #if the host does not provide a hostname
+                    #Fill in start
+                    #print("herror ", herror)
+                    #print("traceroutername ", traceroutername)
+                    #print("traceroutealias ", traceroutealias)
+                    #print("tracerouteraddr ", tracerouteraddr)
+                    #tracerouteraddr = ""
+                    traceroutername = "hostname not returnable"
+                    #traceroutealias = ""
+                    #tracelist1.append(str(addr[0]) + " hostname not returnable")
+                    #Fill in end
+
+
+                if types == 11:
+                    bytes = struct.calcsize("d")
+                    timeSent = struct.unpack("d", recvPacket[28:28 + bytes])[0]
+                    #print("icmp data ", icmp_data)
+                    #Fill in start
+                    elaspetime = timeReceived - timeSent
+                    #elaspetimerecv = time.time() - timeReceived
+                    #totalelapsetime = elaspetimerecv - elaspetime
+                    #print("time started select ", startedSelect)
+                    #print("time received ", timeReceived)
+                    #print("time sent", timeSent)
+                    #print("type = 11  elaspe time ", elaspetime)
+                    #print("type = 11  elaspe time received ", elaspetimerecv)
+                    #print("type = 11  total elaspe time ", totalelapsetime)
+                    #You should add your responses to your lists here
+                    tracelist1.append(str(ttl))
+                    tracelist1.append(str(elaspetime))
+                    tracelist1.append(addr[0])
+                    tracelist1.append(str(traceroutername))
+                    #tracelist1.append("Type = 11 ")
+                    #Fill in end
+                elif types == 3:
+                    bytes = struct.calcsize("d")
+                    timeSent = struct.unpack("d", recvPacket[28:28 + bytes])[0]
+                    #Fill in start
+                    if (icmp_code == 0):
+                        traceroutername = "destination network unreachable"
+                    elif (icmp_code == 1):
+                        traceroutername = "destination host unreachable"
+                    elif (icmp_code == 2):
+                        traceroutername = "destination protocol unreachable"
+                    elif (icmp_code == 6):
+                        traceroutername = "destination network unknown"
+                    elif (icmp_code == 7):
+                        traceroutername = "destination host unknown"
+                    else:
+                        traceroutername = "type = 3 " + " ICMP Code "+ icmp_code + " unknown"
+                    #You should add your responses to your lists here
+                    tracelist1.append(str(ttl))
+                    tracelist1.append(str(elaspetime))
+                    tracelist1.append(addr[0])
+                    tracelist1.append(str(traceroutername))
+                    tracelist1.append("Type = 3 ")
+                    #Fill in end
+                elif types == 0:
+                    bytes = struct.calcsize("d")
+                    timeSent = struct.unpack("d", recvPacket[28:28 + bytes])[0]
+                    #Fill in start
+                    elaspetime = timeReceived - timeSent
+                    #print("type = 0  elaspe time ", elaspetime)
+                    #You should add your responses to your lists here and return your list if your destination IP is met
+                    #tracelist1.append("Type = 0 " + " code " + str(icmp_code) + " " + str(timeSent))
+
+                    traceroutername = "destination host unknown"
+                    tracelist1.append(str(ttl))
+                    tracelist1.append(str(elaspetime))
+                    tracelist1.append(addr[0])
+                    tracelist1.append(str(traceroutername))
+                    #Fill in end
+                else:
+                    #Fill in start
+                    #If there is an exception/error to your if statements, you should append that to your list here
+                    #tracelist1.append("Type = " + str(types) + " code " + icmp_code + " " + str(timeSent) + " not coded for")
+                    traceroutername = "type " + types + " ICMP Code " + icmp_code + " combination unknown"
+                    tracelist1.append(str(ttl))
+                    tracelist1.append(str(elaspetime))
+                    tracelist1.append(addr[0])
+                    tracelist1.append(str(traceroutername))
+                    #Fill in end
+                    #print("last else")
+                #print("break")
+                break
+            finally:
+                mySocket.close()
+    return (tracelist2)
